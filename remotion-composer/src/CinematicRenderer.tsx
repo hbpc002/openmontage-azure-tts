@@ -466,8 +466,8 @@ export const calculateCinematicMetadata: CalculateMetadataFunction<CinematicRend
     return {
       durationInFrames: Math.max(1, Math.ceil(totalSeconds * FPS)),
       fps: FPS,
-      width: 1920,
-      height: 1080,
+      width: props.width ?? 1920,
+      height: props.height ?? 1080,
     };
   };
 

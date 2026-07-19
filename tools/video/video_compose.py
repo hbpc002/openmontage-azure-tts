@@ -1700,15 +1700,69 @@ class VideoCompose(BaseTool):
         # Deep-copy props so we don't mutate the original
         props = json.loads(json.dumps(composition_data))
 
-        # Convert absolute file paths to file:// URIs for Remotion's
-        # Img and OffthreadVideo components
+        # remotion-composer lives at project root
+        composer_dir = Path(__file__).resolve().parent.parent.parent / "remotion-composer"
+        public_dir = composer_dir / "public"
+
+        # Resolve asset files so Remotion's staticFile() can serve them.
+        # We copy assets into remotion-composer/public/ and rewrite source
+        # paths to relative paths that staticFile() can resolve.
+        def _resolve_and_stage(src: str) -> str:
+            """Resolve a source path, copy to public/ if needed, return
+            a staticFile()-compatible relative path or a URL."""
+            if src.startswith(("http://", "https://", "data:", "file://")):
+                return src
+            # Check various locations for the asset
+            candidates = [
+                Path(src),
+                Path(src).resolve(),
+                public_dir / src,
+            ]
+            found = None
+            for c in candidates:
+                if c.exists() and c.is_file():
+                    found = c
+                    break
+            if not found:
+                # Search more broadly — walk parent dirs for the filename
+                stem = Path(src).name
+                for root in [Path.cwd(), composer_dir, public_dir]:
+                    for p in root.rglob(stem):
+                        if p.is_file():
+                            found = p
+                            break
+                    if found:
+                        break
+            if found:
+                # Copy (or symlink) into public/remotion-assets/<hash><ext>
+                import hashlib
+                with open(found, "rb") as _fh:
+                    _digest = hashlib.md5(_fh.read()).hexdigest()[:12]
+                ext = found.suffix
+                target_name = f"remotion-assets/{_digest}{ext}"
+                target_path = public_dir / target_name
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                if not target_path.exists():
+                    import shutil
+                    shutil.copy2(str(found), str(target_path))
+                return target_name
+            # Fallback: leave as-is (staticFile will try to serve it from public/)
+            return src
+
         for cut in props.get("cuts", []):
-            source = cut.get("source", "")
-            if source and not source.startswith(("http://", "https://", "file://")):
-                resolved = Path(source).resolve()
-                if resolved.exists():
-                    posix = resolved.as_posix()
-                    cut["source"] = f"file:///{posix}" if not posix.startswith("/") else f"file://{posix}"
+            src = cut.get("source", "")
+            if src:
+                cut["source"] = _resolve_and_stage(src)
+
+        # Also add narration_path / audio.narration / audio.music if present
+        narr = props.get("audio", {}).get("narration", {})
+        if narr.get("src"):
+            narr["src"] = _resolve_and_stage(narr["src"])
+        music = props.get("audio", {}).get("music", {})
+        if music.get("src"):
+            music["src"] = _resolve_and_stage(music["src"])
+        if props.get("narration_path"):
+            props["narration_path"] = _resolve_and_stage(props["narration_path"])
 
         # Build a custom themeConfig from the playbook's actual colors.
         # This ensures every video gets a unique visual identity derived
@@ -1727,14 +1781,6 @@ class VideoCompose(BaseTool):
         props_path = output_path.parent / ".remotion_props.json"
         with open(props_path, "w", encoding="utf-8") as f:
             json.dump(props, f)
-
-        # remotion-composer lives at project root
-        composer_dir = Path(__file__).resolve().parent.parent.parent / "remotion-composer"
-        if not composer_dir.exists():
-            return ToolResult(
-                success=False,
-                error=f"Remotion composer project not found at {composer_dir}",
-            )
 
         # Route to the correct Remotion composition based on renderer_family.
         # This prevents all pipelines from collapsing into the Explainer visual grammar.

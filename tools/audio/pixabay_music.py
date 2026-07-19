@@ -337,7 +337,7 @@ class PixabayMusic(BaseTool):
         safe_title = "".join(
             c if c.isalnum() or c in "._- " else "_" for c in track_title
         )
-        default_filename = f"pixabay_music_{safe_title[:60]}.mp3"
+        default_filename = f"music_library/pixabay_music_{safe_title[:60]}.mp3"
         output_path = Path(inputs.get("output_path", default_filename))
         output_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -16,6 +16,10 @@ import { ProductReveal, ProductRevealProps } from "./components/ProductReveal";
 import { CaptionOverlay, WordCaption } from "./components/CaptionOverlay";
 import { CollageBurst, CollageBurstProps } from "./CollageBurst";
 import { LyricOverlay, LyricOverlayProps } from "./LyricOverlay";
+import {
+  VerticalCinematic,
+  calculateVerticalCinematicMetadata,
+} from "./VerticalCinematic";
 
 // ---------------------------------------------------------------------------
 // Theme System — prevents every video from looking like dark fintech
@@ -311,6 +315,16 @@ export const Root: React.FC = () => {
           holdSeconds: 4.3,
           fadeOutSeconds: 0.6,
         } as EndTagProps}
+      />
+      <Composition
+        id="VerticalCinematic"
+        component={VerticalCinematic}
+        durationInFrames={30 * 30}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{ scenes: [] }}
+        calculateMetadata={calculateVerticalCinematicMetadata}
       />
       <Composition
         id="EndTagOverlay"

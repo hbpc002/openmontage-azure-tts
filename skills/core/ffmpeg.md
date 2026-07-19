@@ -80,6 +80,21 @@ The `clean_speech` preset targets -16 LUFS with 11 LU range — good for YouTube
 - Use the concat demuxer (`-f concat -safe 0`) for same-codec segments.
 - For mixed codecs or different resolutions, re-encode all segments first.
 
+## Known Pitfalls (Mandatory Reading Before Composition)
+
+Before composing any video with drawtext, concat, or multi-scene orchestration, **read `docs/FFMPEG_PITFALLS.md`**. It documents 9 hard-won fixes from production runs:
+
+- 9:16 portrait scaling without distortion
+- Azure TTS voice selection & REST API usage
+- drawtext `\n` rendering bug → `textfile` workaround
+- Text animation (fade-in, slide-up) via `alpha` + `enable` + `exp`
+- Video source looping vs image looping
+- Concat demuxer desync → concat filter fix
+- Per-scene duration matching
+- Per-segment audio embedding for frame-accurate sync
+
+**Do not skip this read.** Skipping it will produce the same bugs again.
+
 ## Quality Checklist
 
 - [ ] Output plays without artifacts on desktop and mobile
